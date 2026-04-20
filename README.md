@@ -108,6 +108,28 @@ VITE_FIREBASE_APP_ID=...
 | Médio | 20 XP | +8 XP | ×1.5 |
 | Difícil | 35 XP | +8 XP | ×1.5 |
 
+## Deploy
+
+O projeto usa **Firebase Hosting** com deploy automático via GitHub Actions.
+
+| Evento | Resultado |
+|---|---|
+| Push na `main` | Deploy em produção automaticamente |
+| Pull Request | Preview channel gerado com URL temporária |
+
+### Configuração dos secrets no GitHub
+
+Antes do primeiro deploy, adicione as variáveis do Firebase em **Settings → Secrets → Actions** do repositório:
+
+```
+VITE_FIREBASE_API_KEY
+VITE_FIREBASE_AUTH_DOMAIN
+VITE_FIREBASE_PROJECT_ID
+VITE_FIREBASE_STORAGE_BUCKET
+VITE_FIREBASE_MESSAGING_SENDER_ID
+VITE_FIREBASE_APP_ID
+```
+
 ## Regras de segurança do Firestore
 
 Após os 30 dias do modo de teste, atualize as regras em **Firestore → Regras**:
