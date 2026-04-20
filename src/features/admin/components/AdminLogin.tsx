@@ -2,9 +2,10 @@ import { useState } from 'react'
 
 interface Props {
   onLogin: (email: string, password: string) => Promise<void>
+  onBack: () => void
 }
 
-export default function AdminLogin({ onLogin }: Props) {
+export default function AdminLogin({ onLogin, onBack }: Props) {
   const [email, setEmail]       = useState('')
   const [password, setPassword] = useState('')
   const [error, setError]       = useState('')
@@ -26,8 +27,11 @@ export default function AdminLogin({ onLogin }: Props) {
   return (
     <div className="min-h-screen flex items-center justify-center px-4">
       <div className="w-full max-w-sm bg-surface border border-border rounded-xl p-10 animate-fade-in">
+        <button onClick={onBack} className="text-xs text-muted hover:text-white mb-6 block transition-colors">
+          ← Voltar
+        </button>
         <h1 className="text-2xl font-extrabold mb-1 bg-linear-to-br from-primary to-secondary bg-clip-text text-transparent">
-          Área do Admin
+          Área do Professor
         </h1>
         <p className="text-muted text-sm mb-8">Faça login para criar e gerenciar salas</p>
 

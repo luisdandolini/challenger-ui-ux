@@ -9,13 +9,14 @@ interface Props {
   answered: boolean
   streak: number
   onAnswer: (idx: number) => void
+  onLeave: () => void
 }
 
 const NIVEL_COLOR = { facil: '#4ade80', medio: '#fbbf24', dificil: '#f87171' }
 const NIVEL_LABEL = { facil: 'Fácil', medio: 'Médio', dificil: 'Difícil' }
 const QUESTION_TIME = 30
 
-export default function PlayerRoom({ room, player, question, players, answered, streak, onAnswer }: Props) {
+export default function PlayerRoom({ room, player, question, players, answered, streak, onAnswer, onLeave }: Props) {
   const [timeLeft, setTimeLeft] = useState(QUESTION_TIME)
   const [selected, setSelected] = useState<number | null>(null)
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -172,9 +173,18 @@ export default function PlayerRoom({ room, player, question, players, answered, 
           ))}
         </div>
 
-        {room.status === 'question' || room.status === 'ranking' ? (
+        {room.status === 'ranking' && (
           <p className="text-muted text-sm">Aguardando o professor...</p>
-        ) : null}
+        )}
+        {room.status === 'finished' && (
+          <button
+            onClick={onLeave}
+            className="px-6 py-3 bg-surface border border-border rounded-lg text-sm font-semibold
+              hover:border-primary transition-all"
+          >
+            Sair da sala
+          </button>
+        )}
       </div>
     )
   }

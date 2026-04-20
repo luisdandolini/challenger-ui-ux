@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import {
   collection, doc, setDoc, updateDoc, onSnapshot,
   query, where, getDocs, orderBy,
@@ -7,42 +7,43 @@ import { db } from '../../../lib/firebase'
 import type { Room, RoomQuestion, Player, PlayerAnswer } from '../../../lib/types'
 
 const XP_TABLE = { facil: 10, medio: 20, dificil: 35 } as const
-const SPEED_BONUS = 8
-const STREAK_THRESHOLD = 3
+const SPEED_BONUS   = 8
+const STREAK_THRESHOLD  = 3
 const STREAK_MULTIPLIER = 1.5
+const PLAYER_KEY = 'room_player'
 
 export function useRoom() {
-  const [room, setRoom]           = useState<Room | null>(null)
-  const [player, setPlayer]       = useState<Player | null>(null)
-  const [question, setQuestion]   = useState<RoomQuestion | null>(null)
-  const [players, setPlayers]     = useState<Player[]>([])
-  const [answered, setAnswered]   = useState(false)
-  const [streak, setStreak]       = useState(0)
-  const [error, setError]         = useState('')
-  const questionStartRef          = useRef<number>(0)
+  const [room, setRoom]         = useState<Room | null>(null)
+  const [player, setPlayer]     = useState<Player | null>(() => {
+    try { return JSON.parse(sessionStorage.getItem(PLAYER_KEY) ?? 'null') }
+    catch { return null }
+  })
+  const [question, setQuestion] = useState<RoomQuestion | null>(null)
+  const [players, setPlayers]   = useState<Player[]>([])
+  const [answered, setAnswered] = useState(false)
+  const [streak, setStreak]     = useState(0)
+  const [error, setError]       = useState('')
+  const questionStartRef        = useRef<number>(0)
 
-  // Subscribe to room
-  useEffect(() => {
-    if (!room?.id) return
-    const unsub = onSnapshot(doc(db, 'rooms', room.id), snap => {
+  // Subscribe to room by ID (used by RoomPage after join)
+  const subscribeToRoom = useCallback((roomId: string) => {
+    const unsub = onSnapshot(doc(db, 'rooms', roomId), snap => {
       if (snap.exists()) setRoom({ id: snap.id, ...snap.data() } as Room)
     })
     const unsubPlayers = onSnapshot(
-      query(collection(db, 'rooms', room.id, 'players'), orderBy('xp', 'desc')),
+      query(collection(db, 'rooms', roomId, 'players'), orderBy('xp', 'desc')),
       snap => setPlayers(snap.docs.map(d => ({ id: d.id, ...d.data() } as Player)))
     )
     return () => { unsub(); unsubPlayers() }
-  }, [room?.id])
+  }, [])
 
-  // Fetch current question when status changes to 'question'
+  // Fetch question when round changes
   useEffect(() => {
     if (!room || room.status !== 'question') return
-    const fetchQuestion = async () => {
+    const fetch = async () => {
       const snap = await getDocs(
-        query(
-          collection(db, 'rooms', room.id, 'questions'),
-          where('order', '==', room.currentQuestion)
-        )
+        query(collection(db, 'rooms', room.id, 'questions'),
+          where('order', '==', room.currentQuestion))
       )
       if (!snap.empty) {
         setQuestion({ id: snap.docs[0].id, ...snap.docs[0].data() } as RoomQuestion)
@@ -50,53 +51,51 @@ export function useRoom() {
         questionStartRef.current = Date.now()
       }
     }
-    fetchQuestion()
+    fetch()
   }, [room?.status, room?.currentQuestion])
 
-  const joinRoom = async (code: string, name: string) => {
+  // Join room by code (used by JoinPage)
+  const joinRoom = useCallback(async (code: string, name: string): Promise<string | null> => {
     setError('')
     const snap = await getDocs(
       query(collection(db, 'rooms'), where('code', '==', code.toUpperCase()))
     )
-    if (snap.empty) { setError('Sala não encontrada'); return }
-
-    const roomDoc = snap.docs[0]
+    if (snap.empty)                                { setError('Sala não encontrada'); return null }
+    const roomDoc  = snap.docs[0]
     const roomData = { id: roomDoc.id, ...roomDoc.data() } as Room
+    if (roomData.status === 'finished')            { setError('Esta sala já foi encerrada'); return null }
 
-    if (roomData.status === 'finished') { setError('Esta sala já foi encerrada'); return }
-
-    const playerId = `${name.toLowerCase().replace(/\s/g, '_')}_${Date.now()}`
+    const playerId   = `${name.toLowerCase().replace(/\s+/g, '_')}_${Date.now()}`
     const playerData: Omit<Player, 'id'> = { name, xp: 0, joinedAt: Date.now() }
 
     await setDoc(doc(db, 'rooms', roomDoc.id, 'players', playerId), playerData)
-    setPlayer({ id: playerId, ...playerData })
-    setRoom(roomData)
-  }
 
-  const submitAnswer = async (optionIndex: number) => {
+    const newPlayer = { id: playerId, ...playerData }
+    sessionStorage.setItem(PLAYER_KEY, JSON.stringify(newPlayer))
+    setPlayer(newPlayer)
+    return roomDoc.id
+  }, [])
+
+  const submitAnswer = useCallback(async (optionIndex: number) => {
     if (!room || !player || !question || answered) return
     setAnswered(true)
 
-    const timeMs  = Date.now() - questionStartRef.current
-    const correct = optionIndex === question.resposta
+    const timeMs    = Date.now() - questionStartRef.current
+    const correct   = optionIndex === question.resposta
     const newStreak = correct ? streak + 1 : 0
     setStreak(newStreak)
 
     let xpGained = 0
     if (correct) {
       xpGained = XP_TABLE[question.nivel]
-      if (timeMs <= 5000) xpGained += SPEED_BONUS
-      if (newStreak >= STREAK_THRESHOLD) xpGained = Math.round(xpGained * STREAK_MULTIPLIER)
+      if (timeMs <= 5000)                      xpGained += SPEED_BONUS
+      if (newStreak >= STREAK_THRESHOLD)        xpGained = Math.round(xpGained * STREAK_MULTIPLIER)
     }
 
     const answerData: PlayerAnswer = {
-      playerId:      player.id,
-      playerName:    player.name,
+      playerId: player.id, playerName: player.name,
       questionIndex: question.order,
-      answer:        optionIndex,
-      correct,
-      xpGained,
-      timeMs,
+      answer: optionIndex, correct, xpGained, timeMs,
     }
 
     await setDoc(
@@ -108,9 +107,22 @@ export function useRoom() {
       await updateDoc(doc(db, 'rooms', room.id, 'players', player.id), {
         xp: (player.xp ?? 0) + xpGained,
       })
-      setPlayer(p => p ? { ...p, xp: p.xp + xpGained } : p)
+      setPlayer(p => {
+        const updated = p ? { ...p, xp: p.xp + xpGained } : p
+        if (updated) sessionStorage.setItem(PLAYER_KEY, JSON.stringify(updated))
+        return updated
+      })
     }
-  }
+  }, [room, player, question, answered, streak])
 
-  return { room, player, question, players, answered, streak, error, joinRoom, submitAnswer }
+  const clearPlayer = useCallback(() => {
+    sessionStorage.removeItem(PLAYER_KEY)
+    setPlayer(null)
+    setRoom(null)
+  }, [])
+
+  return {
+    room, player, question, players, answered, streak, error,
+    joinRoom, subscribeToRoom, submitAnswer, clearPlayer,
+  }
 }

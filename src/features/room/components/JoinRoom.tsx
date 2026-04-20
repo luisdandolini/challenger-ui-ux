@@ -3,9 +3,10 @@ import { useState } from 'react'
 interface Props {
   onJoin: (code: string, name: string) => Promise<void>
   error: string
+  onBack: () => void
 }
 
-export default function JoinRoom({ onJoin, error }: Props) {
+export default function JoinRoom({ onJoin, error, onBack }: Props) {
   const [code, setCode]   = useState('')
   const [name, setName]   = useState('')
   const [loading, setLoading] = useState(false)
@@ -20,6 +21,9 @@ export default function JoinRoom({ onJoin, error }: Props) {
   return (
     <div className="min-h-screen flex items-center justify-center px-4">
       <div className="w-full max-w-sm bg-surface border border-border rounded-xl p-10 animate-fade-in">
+        <button onClick={onBack} className="text-xs text-muted hover:text-white mb-6 block transition-colors">
+          ← Voltar
+        </button>
         <h1 className="text-2xl font-extrabold mb-1 bg-linear-to-br from-primary to-secondary bg-clip-text text-transparent">
           Entrar na sala
         </h1>
