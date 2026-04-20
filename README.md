@@ -1,6 +1,6 @@
-# UI/UX Challenger 🎮
+# Challenger 🎮
 
-Quiz gamificado em tempo real para aulas de design. O professor cria salas com perguntas personalizadas, gera um código de acesso e os alunos entram pelo celular ou computador — sem cadastro.
+Plataforma de quiz gamificado em tempo real. O professor cria salas com perguntas personalizadas sobre qualquer tema, gera um código de acesso e os alunos entram pelo celular ou computador — sem cadastro.
 
 ## Funcionalidades
 

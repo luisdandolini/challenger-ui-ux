@@ -8,10 +8,10 @@ export default function HomePage() {
       <div className="text-center animate-fade-in">
         <div className="text-6xl mb-4">🎮</div>
         <h1 className="text-4xl font-extrabold mb-2 bg-linear-to-br from-primary to-secondary bg-clip-text text-transparent">
-          UI/UX Challenger
+          Challenger
         </h1>
         <p className="text-muted text-base max-w-xs mx-auto">
-          Quiz gamificado em tempo real para aulas de design
+          Quiz gamificado em tempo real para sua turma
         </p>
       </div>
 
