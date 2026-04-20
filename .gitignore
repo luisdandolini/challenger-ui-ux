@@ -26,6 +26,10 @@ dist-ssr/
 .DS_Store
 Thumbs.db
 
+# Firebase
+.firebase/
+
 # Logs
 *.log
 npm-debug.log*
+firebase-debug.log*
