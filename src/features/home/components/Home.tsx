@@ -7,11 +7,13 @@ interface Props {
   onStart: (name: string) => void
   ranking: RankingEntry[]
   onClearRanking: () => void
+  onJoinRoom: () => void
+  onAdminArea: () => void
 }
 
 const medals = ['🥇', '🥈', '🥉']
 
-export default function Home({ onStart, ranking, onClearRanking }: Props) {
+export default function Home({ onStart, ranking, onClearRanking, onJoinRoom, onAdminArea }: Props) {
   const [name, setName] = useState('')
   const [error, setError] = useState('')
 
@@ -65,6 +67,23 @@ export default function Home({ onStart, ranking, onClearRanking }: Props) {
               {l.icon} {l.label}
             </span>
           ))}
+        </div>
+
+        <div className="mt-6 pt-6 border-t border-border flex gap-3">
+          <button
+            onClick={onJoinRoom}
+            className="flex-1 py-2.5 bg-surface2 border border-border rounded-lg text-sm font-semibold
+              hover:border-primary transition-colors"
+          >
+            🎮 Entrar em sala
+          </button>
+          <button
+            onClick={onAdminArea}
+            className="flex-1 py-2.5 bg-surface2 border border-border rounded-lg text-sm font-semibold
+              hover:border-primary transition-colors"
+          >
+            🔑 Área do professor
+          </button>
         </div>
       </div>
 
