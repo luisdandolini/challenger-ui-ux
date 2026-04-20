@@ -4,13 +4,12 @@ import {
 } from 'firebase/auth'
 import {
   collection, doc, setDoc, updateDoc, onSnapshot,
-  query, orderBy, getDocs,
+  query, orderBy, getDocs, where,
 } from 'firebase/firestore'
 import { auth, db } from '../../../lib/firebase'
 import type { Room, RoomQuestion, Player, PlayerAnswer } from '../../../lib/types'
 
-const XP_TABLE = { facil: 10, medio: 20, dificil: 35 } as const
-const SPEED_BONUS = 8
+const QUESTION_DURATION = 30
 
 function generateCode() {
   return Math.random().toString(36).substring(2, 8).toUpperCase()
@@ -19,11 +18,11 @@ function generateCode() {
 const ROOM_KEY = 'admin_room_id'
 
 export function useAdmin() {
-  const [user, setUser]       = useState<User | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [room, setRoom]       = useState<Room | null>(null)
-  const [players, setPlayers] = useState<Player[]>([])
-  const [answers, setAnswers] = useState<PlayerAnswer[]>([])
+  const [user, setUser]           = useState<User | null>(null)
+  const [loading, setLoading]     = useState(true)
+  const [room, setRoom]           = useState<Room | null>(null)
+  const [players, setPlayers]     = useState<Player[]>([])
+  const [liveAnswers, setLiveAnswers] = useState<PlayerAnswer[]>([])
 
   useEffect(() => {
     return onAuthStateChanged(auth, async u => {
@@ -40,6 +39,7 @@ export function useAdmin() {
     })
   }, [])
 
+  // Subscribe to room + players
   useEffect(() => {
     if (!room?.id) return
     const unsub = onSnapshot(doc(db, 'rooms', room.id), snap => {
@@ -51,6 +51,19 @@ export function useAdmin() {
     )
     return () => { unsub(); unsubPlayers() }
   }, [room?.id])
+
+  // Subscribe to live answers for current question
+  useEffect(() => {
+    if (!room?.id || room.status !== 'question') { setLiveAnswers([]); return }
+    const unsub = onSnapshot(
+      query(
+        collection(db, 'rooms', room.id, 'answers'),
+        where('questionIndex', '==', room.currentQuestion)
+      ),
+      snap => setLiveAnswers(snap.docs.map(d => d.data() as PlayerAnswer))
+    )
+    return unsub
+  }, [room?.id, room?.status, room?.currentQuestion])
 
   const login = (email: string, password: string) =>
     signInWithEmailAndPassword(auth, email, password)
@@ -68,12 +81,13 @@ export function useAdmin() {
 
     const roomData: Omit<Room, 'id'> = {
       code,
-      adminId:         user.uid,
-      adminName:       user.email ?? 'Admin',
-      status:          'waiting',
-      currentQuestion: 0,
-      totalQuestions:  questions.length,
-      createdAt:       Date.now(),
+      adminId:          user.uid,
+      adminName:        user.email ?? 'Admin',
+      status:           'waiting',
+      currentQuestion:  0,
+      totalQuestions:   questions.length,
+      createdAt:        Date.now(),
+      questionDuration: QUESTION_DURATION,
     }
 
     await setDoc(doc(db, 'rooms', roomId), roomData)
@@ -88,17 +102,19 @@ export function useAdmin() {
 
   const startQuestion = async () => {
     if (!room) return
-    await updateDoc(doc(db, 'rooms', room.id), { status: 'question' })
+    await updateDoc(doc(db, 'rooms', room.id), {
+      status:            'question',
+      questionStartedAt: Date.now(),
+    })
   }
 
   const showRanking = async () => {
     if (!room) return
-    const snap = await getDocs(collection(db, 'rooms', room.id, 'answers'))
-    const roundAnswers = snap.docs
-      .map(d => d.data() as PlayerAnswer)
-      .filter(a => a.questionIndex === room.currentQuestion)
-
-    setAnswers(roundAnswers)
+    const snap = await getDocs(
+      query(collection(db, 'rooms', room.id, 'answers'),
+        where('questionIndex', '==', room.currentQuestion))
+    )
+    const roundAnswers = snap.docs.map(d => d.data() as PlayerAnswer)
 
     for (const a of roundAnswers) {
       if (a.xpGained > 0) {
@@ -116,13 +132,14 @@ export function useAdmin() {
 
   const nextQuestion = async () => {
     if (!room) return
-    const next = room.currentQuestion + 1
+    const next   = room.currentQuestion + 1
     const isLast = next >= room.totalQuestions
     await updateDoc(doc(db, 'rooms', room.id), {
-      status:          isLast ? 'finished' : 'question',
-      currentQuestion: isLast ? room.currentQuestion : next,
+      status:            isLast ? 'finished' : 'question',
+      currentQuestion:   isLast ? room.currentQuestion : next,
+      questionStartedAt: isLast ? null : Date.now(),
     })
-    setAnswers([])
+    setLiveAnswers([])
   }
 
   const finishRoom = async () => {
@@ -133,7 +150,7 @@ export function useAdmin() {
   }
 
   return {
-    user, loading, room, players, answers,
+    user, loading, room, players, liveAnswers,
     login, logout, createRoom,
     startQuestion, showRanking, nextQuestion, finishRoom,
   }

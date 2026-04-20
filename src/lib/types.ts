@@ -6,9 +6,11 @@ export interface Room {
   adminId: string
   adminName: string
   status: RoomStatus
-  currentQuestion: number   // index da pergunta atual
+  currentQuestion: number
   totalQuestions: number
   createdAt: number
+  questionStartedAt?: number  // timestamp quando a pergunta foi iniciada
+  questionDuration: number    // segundos por pergunta
 }
 
 export interface RoomQuestion {

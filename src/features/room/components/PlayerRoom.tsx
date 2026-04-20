@@ -26,33 +26,29 @@ export default function PlayerRoom({
   onAnswer,
   onLeave,
 }: Props) {
-  const [timeLeft, setTimeLeft] = useState(QUESTION_TIME);
+  const duration = room.questionDuration ?? QUESTION_TIME
+  const [timeLeft, setTimeLeft] = useState(duration);
   const [selected, setSelected] = useState<number | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  useEffect(() => {
-    setSelected(null);
-    setTimeLeft(QUESTION_TIME);
-  }, [question?.id]);
+  useEffect(() => { setSelected(null) }, [question?.id]);
 
+  // Timer sincronizado com questionStartedAt do servidor
   useEffect(() => {
-    if (room.status !== "question" || answered) {
+    if (room.status !== "question" || answered || !room.questionStartedAt) {
       if (timerRef.current) clearInterval(timerRef.current);
       return;
     }
-    timerRef.current = setInterval(() => {
-      setTimeLeft((t) => {
-        if (t <= 1) {
-          clearInterval(timerRef.current!);
-          return 0;
-        }
-        return t - 1;
-      });
-    }, 1000);
-    return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
-    };
-  }, [room.status, answered, question?.id]);
+    const tick = () => {
+      const elapsed = (Date.now() - room.questionStartedAt!) / 1000
+      const left    = Math.max(0, duration - Math.floor(elapsed))
+      setTimeLeft(left)
+      if (left <= 0 && timerRef.current) clearInterval(timerRef.current)
+    }
+    tick()
+    timerRef.current = setInterval(tick, 500)
+    return () => { if (timerRef.current) clearInterval(timerRef.current) }
+  }, [room.status, room.questionStartedAt, answered, duration]);
 
   const handleAnswer = (idx: number) => {
     if (answered || selected !== null) return;
@@ -64,16 +60,47 @@ export default function PlayerRoom({
 
   if (room.status === "waiting") {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center px-4 gap-6 animate-fade-in">
+      <div className="min-h-screen flex flex-col items-center justify-center px-4 py-8 gap-6 animate-fade-in">
         <div className="text-center">
           <div className="text-5xl mb-4 animate-streak">⏳</div>
-          <h2 className="text-xl font-bold mb-2">Aguardando o professor...</h2>
+          <h2 className="text-xl font-bold mb-1">Aguardando o professor...</h2>
           <p className="text-muted text-sm">A partida vai começar em breve</p>
         </div>
-        <div className="bg-surface border border-border rounded-xl px-8 py-4 text-center">
+
+        {/* Player card */}
+        <div className="bg-surface border border-primary/40 rounded-xl px-8 py-4 text-center">
           <p className="text-xs text-muted mb-1">Você entrou como</p>
-          <p className="font-bold text-lg">{player.name}</p>
+          <p className="font-bold text-lg text-primary">{player.name}</p>
         </div>
+
+        {/* Players list */}
+        {players.length > 0 && (
+          <div className="w-full max-w-sm bg-surface border border-border rounded-xl overflow-hidden">
+            <div className="px-5 py-3 border-b border-border flex justify-between items-center">
+              <span className="text-xs font-bold text-muted uppercase tracking-wide">Na sala</span>
+              <span className="text-xs font-bold text-primary">{players.length}</span>
+            </div>
+            <div className="max-h-48 overflow-y-auto">
+              {players.map((p) => (
+                <div
+                  key={p.id}
+                  className={`flex items-center gap-3 px-5 py-2.5 border-b border-border last:border-0
+                    ${p.id === player.id ? 'bg-primary/10' : ''}`}
+                >
+                  <div className="w-7 h-7 rounded-full bg-surface2 flex items-center justify-center text-xs font-bold">
+                    {p.name.charAt(0).toUpperCase()}
+                  </div>
+                  <span className="text-sm font-medium">
+                    {p.name}
+                    {p.id === player.id && (
+                      <span className="text-primary text-xs ml-1.5">(você)</span>
+                    )}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     );
   }

@@ -7,7 +7,7 @@ import AdminRoom from '../features/admin/components/AdminRoom'
 export default function AdminPage() {
   const navigate = useNavigate()
   const {
-    user, loading, room, players, answers,
+    user, loading, room, players, liveAnswers,
     login, logout, createRoom,
     startQuestion, showRanking, nextQuestion, finishRoom,
   } = useAdmin()
@@ -37,7 +37,7 @@ export default function AdminPage() {
     <AdminRoom
       room={room}
       players={players}
-      answers={answers}
+      liveAnswers={liveAnswers}
       onStartQuestion={startQuestion}
       onShowRanking={showRanking}
       onNextQuestion={nextQuestion}
