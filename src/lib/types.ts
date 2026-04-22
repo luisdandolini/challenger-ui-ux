@@ -30,6 +30,14 @@ export interface Player {
   joinedAt: number
 }
 
+export interface Quiz {
+  id: string
+  title: string
+  adminId: string
+  createdAt: number
+  questions: Omit<RoomQuestion, 'id'>[]
+}
+
 export interface PlayerAnswer {
   playerId: string
   playerName: string
