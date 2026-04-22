@@ -1,157 +1,198 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect } from "react";
 import {
-  signInWithEmailAndPassword, signOut, onAuthStateChanged, type User,
-} from 'firebase/auth'
+  signInWithEmailAndPassword,
+  signOut,
+  onAuthStateChanged,
+  type User,
+} from "firebase/auth";
 import {
-  collection, doc, setDoc, updateDoc, onSnapshot,
-  query, orderBy, getDocs, where,
-} from 'firebase/firestore'
-import { auth, db } from '../../../lib/firebase'
-import type { Room, RoomQuestion, Player, PlayerAnswer } from '../../../lib/types'
+  collection,
+  doc,
+  setDoc,
+  updateDoc,
+  onSnapshot,
+  query,
+  orderBy,
+  getDocs,
+  where,
+} from "firebase/firestore";
+import { auth, db } from "../../../lib/firebase";
+import type {
+  Room,
+  RoomQuestion,
+  Player,
+  PlayerAnswer,
+} from "../../../lib/types";
 
-const QUESTION_DURATION = 30
+const QUESTION_DURATION = 30;
 
 function generateCode() {
-  return Math.random().toString(36).substring(2, 8).toUpperCase()
+  return Math.random().toString(36).substring(2, 8).toUpperCase();
 }
 
-const ROOM_KEY = 'admin_room_id'
+const ROOM_KEY = "admin_room_id";
 
 export function useAdmin() {
-  const [user, setUser]           = useState<User | null>(null)
-  const [loading, setLoading]     = useState(true)
-  const [room, setRoom]           = useState<Room | null>(null)
-  const [players, setPlayers]     = useState<Player[]>([])
-  const [liveAnswers, setLiveAnswers] = useState<PlayerAnswer[]>([])
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [room, setRoom] = useState<Room | null>(null);
+  const [players, setPlayers] = useState<Player[]>([]);
+  const [liveAnswers, setLiveAnswers] = useState<PlayerAnswer[]>([]);
 
   useEffect(() => {
-    return onAuthStateChanged(auth, async u => {
-      setUser(u)
-      if (u) {
-        const savedId = sessionStorage.getItem(ROOM_KEY)
+    return onAuthStateChanged(auth, async (authUser) => {
+      setUser(authUser);
+      if (authUser) {
+        const savedId = sessionStorage.getItem(ROOM_KEY);
         if (savedId) {
-          const snap = await getDocs(collection(db, 'rooms'))
-          const found = snap.docs.find(d => d.id === savedId)
-          if (found) setRoom({ id: found.id, ...found.data() } as Room)
+          const snap = await getDocs(collection(db, "rooms"));
+          const found = snap.docs.find((d) => d.id === savedId);
+          if (found) setRoom({ id: found.id, ...found.data() } as Room);
         }
       }
-      setLoading(false)
-    })
-  }, [])
+      setLoading(false);
+    });
+  }, []);
 
-  // Subscribe to room + players
   useEffect(() => {
-    if (!room?.id) return
-    const unsub = onSnapshot(doc(db, 'rooms', room.id), snap => {
-      if (snap.exists()) setRoom({ id: snap.id, ...snap.data() } as Room)
-    })
+    if (!room?.id) return;
+    const unsub = onSnapshot(doc(db, "rooms", room.id), (snap) => {
+      if (snap.exists()) setRoom({ id: snap.id, ...snap.data() } as Room);
+    });
     const unsubPlayers = onSnapshot(
-      query(collection(db, 'rooms', room.id, 'players'), orderBy('xp', 'desc')),
-      snap => setPlayers(snap.docs.map(d => ({ id: d.id, ...d.data() } as Player)))
-    )
-    return () => { unsub(); unsubPlayers() }
-  }, [room?.id])
+      query(collection(db, "rooms", room.id, "players"), orderBy("xp", "desc")),
+      (snap) =>
+        setPlayers(
+          snap.docs.map((doc) => ({ id: doc.id, ...doc.data() }) as Player),
+        ),
+    );
+    return () => {
+      unsub();
+      unsubPlayers();
+    };
+  }, [room?.id]);
 
-  // Subscribe to live answers for current question
   useEffect(() => {
-    if (!room?.id || room.status !== 'question') { setLiveAnswers([]); return }
+    if (!room?.id || room.status !== "question") {
+      setLiveAnswers([]);
+      return;
+    }
     const unsub = onSnapshot(
       query(
-        collection(db, 'rooms', room.id, 'answers'),
-        where('questionIndex', '==', room.currentQuestion)
+        collection(db, "rooms", room.id, "answers"),
+        where("questionIndex", "==", room.currentQuestion),
       ),
-      snap => setLiveAnswers(snap.docs.map(d => d.data() as PlayerAnswer))
-    )
-    return unsub
-  }, [room?.id, room?.status, room?.currentQuestion])
+      (snap) => setLiveAnswers(snap.docs.map((d) => d.data() as PlayerAnswer)),
+    );
+    return unsub;
+  }, [room?.id, room?.status, room?.currentQuestion]);
 
   const login = (email: string, password: string) =>
-    signInWithEmailAndPassword(auth, email, password)
+    signInWithEmailAndPassword(auth, email, password);
 
   const logout = () => {
-    sessionStorage.removeItem(ROOM_KEY)
-    setRoom(null)
-    return signOut(auth)
-  }
+    sessionStorage.removeItem(ROOM_KEY);
+    setRoom(null);
+    return signOut(auth);
+  };
 
-  const createRoom = async (questions: Omit<RoomQuestion, 'id'>[]) => {
-    if (!user) throw new Error('Não autenticado')
-    const roomId = doc(collection(db, 'rooms')).id
-    const code   = generateCode()
+  const createRoom = async (questions: Omit<RoomQuestion, "id">[]) => {
+    if (!user) throw new Error("Não autenticado");
+    const roomId = doc(collection(db, "rooms")).id;
+    const code = generateCode();
 
-    const roomData: Omit<Room, 'id'> = {
+    const roomData: Omit<Room, "id"> = {
       code,
-      adminId:          user.uid,
-      adminName:        user.email ?? 'Admin',
-      status:           'waiting',
-      currentQuestion:  0,
-      totalQuestions:   questions.length,
-      createdAt:        Date.now(),
+      adminId: user.uid,
+      adminName: user.email ?? "Admin",
+      status: "waiting",
+      currentQuestion: 0,
+      totalQuestions: questions.length,
+      createdAt: Date.now(),
       questionDuration: QUESTION_DURATION,
+    };
+
+    await setDoc(doc(db, "rooms", roomId), roomData);
+    for (const [index, question] of questions.entries()) {
+      await setDoc(doc(db, "rooms", roomId, "questions", String(index)), {
+        ...question,
+        order: index,
+      });
     }
 
-    await setDoc(doc(db, 'rooms', roomId), roomData)
-    for (const [i, q] of questions.entries()) {
-      await setDoc(doc(db, 'rooms', roomId, 'questions', String(i)), { ...q, order: i })
-    }
-
-    sessionStorage.setItem(ROOM_KEY, roomId)
-    setRoom({ id: roomId, ...roomData })
-    return { roomId, code }
-  }
+    sessionStorage.setItem(ROOM_KEY, roomId);
+    setRoom({ id: roomId, ...roomData });
+    return { roomId, code };
+  };
 
   const startQuestion = async () => {
-    if (!room) return
-    await updateDoc(doc(db, 'rooms', room.id), {
-      status:            'question',
+    if (!room) return;
+    await updateDoc(doc(db, "rooms", room.id), {
+      status: "question",
       questionStartedAt: Date.now(),
-    })
-  }
+    });
+  };
 
   const showRanking = async () => {
-    if (!room) return
+    if (!room) return;
     const snap = await getDocs(
-      query(collection(db, 'rooms', room.id, 'answers'),
-        where('questionIndex', '==', room.currentQuestion))
-    )
-    const roundAnswers = snap.docs.map(d => d.data() as PlayerAnswer)
+      query(
+        collection(db, "rooms", room.id, "answers"),
+        where("questionIndex", "==", room.currentQuestion),
+      ),
+    );
+    const roundAnswers = snap.docs.map((d) => d.data() as PlayerAnswer);
 
-    for (const a of roundAnswers) {
-      if (a.xpGained > 0) {
-        const player = players.find(p => p.id === a.playerId)
+    for (const answer of roundAnswers) {
+      if (answer.xpGained > 0) {
+        const player = players.find(
+          (currentPlayer) => currentPlayer.id === answer.playerId,
+        );
         if (player) {
-          await updateDoc(doc(db, 'rooms', room.id, 'players', a.playerId), {
-            xp: player.xp + a.xpGained,
-          })
+          await updateDoc(
+            doc(db, "rooms", room.id, "players", answer.playerId),
+            {
+              xp: player.xp + answer.xpGained,
+            },
+          );
         }
       }
     }
 
-    await updateDoc(doc(db, 'rooms', room.id), { status: 'ranking' })
-  }
+    await updateDoc(doc(db, "rooms", room.id), { status: "ranking" });
+  };
 
   const nextQuestion = async () => {
-    if (!room) return
-    const next   = room.currentQuestion + 1
-    const isLast = next >= room.totalQuestions
-    await updateDoc(doc(db, 'rooms', room.id), {
-      status:            isLast ? 'finished' : 'question',
-      currentQuestion:   isLast ? room.currentQuestion : next,
+    if (!room) return;
+    const next = room.currentQuestion + 1;
+    const isLast = next >= room.totalQuestions;
+    await updateDoc(doc(db, "rooms", room.id), {
+      status: isLast ? "finished" : "question",
+      currentQuestion: isLast ? room.currentQuestion : next,
       questionStartedAt: isLast ? null : Date.now(),
-    })
-    setLiveAnswers([])
-  }
+    });
+    setLiveAnswers([]);
+  };
 
   const finishRoom = async () => {
-    if (!room) return
-    sessionStorage.removeItem(ROOM_KEY)
-    await updateDoc(doc(db, 'rooms', room.id), { status: 'finished' })
-    setRoom(null)
-  }
+    if (!room) return;
+    sessionStorage.removeItem(ROOM_KEY);
+    await updateDoc(doc(db, "rooms", room.id), { status: "finished" });
+    setRoom(null);
+  };
 
   return {
-    user, loading, room, players, liveAnswers,
-    login, logout, createRoom,
-    startQuestion, showRanking, nextQuestion, finishRoom,
-  }
+    user,
+    loading,
+    room,
+    players,
+    liveAnswers,
+    login,
+    logout,
+    createRoom,
+    startQuestion,
+    showRanking,
+    nextQuestion,
+    finishRoom,
+  };
 }

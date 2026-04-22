@@ -20,26 +20,26 @@ export default function RoomCreator({ onCreateRoom, onLogout, adminEmail }: Prop
   const [loading, setLoading]     = useState(false)
   const [error, setError]         = useState('')
 
-  const updateQuestion = (i: number, field: string, value: unknown) =>
-    setQuestions(prev => prev.map((q, idx) => idx === i ? { ...q, [field]: value } : q))
+  const updateQuestion = (questionIndex: number, field: string, value: unknown) =>
+    setQuestions(prev => prev.map((question, index) => index === questionIndex ? { ...question, [field]: value } : question))
 
-  const updateOption = (qi: number, oi: number, value: string) =>
-    setQuestions(prev => prev.map((q, idx) =>
-      idx === qi ? { ...q, opcoes: q.opcoes.map((o, j) => j === oi ? value : o) } : q
+  const updateOption = (questionIndex: number, optionIndex: number, value: string) =>
+    setQuestions(prev => prev.map((question, index) =>
+      index === questionIndex ? { ...question, opcoes: question.opcoes.map((option, oi) => oi === optionIndex ? value : option) } : question
     ))
 
   const addQuestion = () => setQuestions(prev => [...prev, emptyQuestion()])
-  const removeQuestion = (i: number) => setQuestions(prev => prev.filter((_, idx) => idx !== i))
+  const removeQuestion = (questionIndex: number) => setQuestions(prev => prev.filter((_, index) => index !== questionIndex))
 
   const handleCreate = async () => {
-    for (const [i, q] of questions.entries()) {
-      if (!q.pergunta.trim()) { setError(`Pergunta ${i + 1} está vazia`); return }
-      if (q.opcoes.some(o => !o.trim())) { setError(`Preencha todas as opções da pergunta ${i + 1}`); return }
+    for (const [index, question] of questions.entries()) {
+      if (!question.pergunta.trim()) { setError(`Pergunta ${index + 1} está vazia`); return }
+      if (question.opcoes.some(option => !option.trim())) { setError(`Preencha todas as opções da pergunta ${index + 1}`); return }
     }
     setError('')
     setLoading(true)
     try {
-      await onCreateRoom(questions.map((q, i) => ({ ...q, order: i })))
+      await onCreateRoom(questions.map((question, index) => ({ ...question, order: index })))
     } catch {
       setError('Erro ao criar sala. Tente novamente.')
     } finally {
@@ -62,14 +62,14 @@ export default function RoomCreator({ onCreateRoom, onLogout, adminEmail }: Prop
       </div>
 
       <div className="flex flex-col gap-6">
-        {questions.map((q, qi) => (
-          <div key={qi} className="bg-surface border border-border rounded-xl p-6 animate-fade-in">
+        {questions.map((question, questionIndex) => (
+          <div key={questionIndex} className="bg-surface border border-border rounded-xl p-6 animate-fade-in">
             <div className="flex justify-between items-center mb-4">
-              <span className="text-sm font-bold text-muted">Pergunta {qi + 1}</span>
+              <span className="text-sm font-bold text-muted">Pergunta {questionIndex + 1}</span>
               <div className="flex items-center gap-3">
                 <select
-                  value={q.nivel}
-                  onChange={e => updateQuestion(qi, 'nivel', e.target.value)}
+                  value={question.nivel}
+                  onChange={event => updateQuestion(questionIndex, 'nivel', event.target.value)}
                   className="bg-surface2 border border-border rounded-lg px-3 py-1.5 text-xs text-white outline-none"
                 >
                   <option value="facil">Fácil</option>
@@ -78,7 +78,7 @@ export default function RoomCreator({ onCreateRoom, onLogout, adminEmail }: Prop
                 </select>
                 {questions.length > 1 && (
                   <button
-                    onClick={() => removeQuestion(qi)}
+                    onClick={() => removeQuestion(questionIndex)}
                     className="text-danger text-xs hover:opacity-70 transition-opacity"
                   >
                     Remover
@@ -92,26 +92,26 @@ export default function RoomCreator({ onCreateRoom, onLogout, adminEmail }: Prop
               className="w-full px-4 py-3 bg-surface2 border border-border rounded-lg text-sm text-white outline-none
                 focus:border-primary transition-colors resize-none mb-4"
               placeholder="Digite a pergunta..."
-              value={q.pergunta}
-              onChange={e => updateQuestion(qi, 'pergunta', e.target.value)}
+              value={question.pergunta}
+              onChange={event => updateQuestion(questionIndex, 'pergunta', event.target.value)}
             />
 
             <div className="grid grid-cols-2 gap-2 mb-4">
-              {q.opcoes.map((opt, oi) => (
-                <div key={oi} className="flex items-center gap-2">
+              {question.opcoes.map((option, optionIndex) => (
+                <div key={optionIndex} className="flex items-center gap-2">
                   <input
                     type="radio"
-                    name={`correct-${qi}`}
-                    checked={q.resposta === oi}
-                    onChange={() => updateQuestion(qi, 'resposta', oi)}
+                    name={`correct-${questionIndex}`}
+                    checked={question.resposta === optionIndex}
+                    onChange={() => updateQuestion(questionIndex, 'resposta', optionIndex)}
                     className="accent-primary"
                   />
                   <input
                     className="flex-1 px-3 py-2 bg-surface2 border border-border rounded-lg text-sm text-white
                       outline-none focus:border-primary transition-colors"
-                    placeholder={`Opção ${String.fromCharCode(65 + oi)}`}
-                    value={opt}
-                    onChange={e => updateOption(qi, oi, e.target.value)}
+                    placeholder={`Opção ${String.fromCharCode(65 + optionIndex)}`}
+                    value={option}
+                    onChange={event => updateOption(questionIndex, optionIndex, event.target.value)}
                   />
                 </div>
               ))}
@@ -124,8 +124,8 @@ export default function RoomCreator({ onCreateRoom, onLogout, adminEmail }: Prop
               className="mt-3 w-full px-3 py-2 bg-surface2 border border-border rounded-lg text-xs text-white
                 outline-none focus:border-primary transition-colors"
               placeholder="Explicação (opcional)"
-              value={q.explicacao}
-              onChange={e => updateQuestion(qi, 'explicacao', e.target.value)}
+              value={question.explicacao}
+              onChange={event => updateQuestion(questionIndex, 'explicacao', event.target.value)}
             />
           </div>
         ))}

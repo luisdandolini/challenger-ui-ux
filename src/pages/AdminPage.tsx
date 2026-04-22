@@ -20,7 +20,7 @@ export default function AdminPage() {
 
   if (!user) return (
     <AdminLogin
-      onLogin={login}
+      onLogin={async (email, password) => { await login(email, password) }}
       onBack={() => navigate('/')}
     />
   )
@@ -28,7 +28,7 @@ export default function AdminPage() {
   if (!room) return (
     <RoomCreator
       adminEmail={user.email ?? ''}
-      onCreateRoom={async (qs) => { await createRoom(qs) }}
+      onCreateRoom={createRoom}
       onLogout={logout}
     />
   )

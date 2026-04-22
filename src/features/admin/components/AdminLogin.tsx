@@ -41,16 +41,16 @@ export default function AdminLogin({ onLogin, onBack }: Props) {
             placeholder="E-mail"
             type="email"
             value={email}
-            onChange={e => setEmail(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && handle()}
+            onChange={event => setEmail(event.target.value)}
+            onKeyDown={event => event.key === 'Enter' && handle()}
           />
           <input
             className="w-full px-4 py-3 bg-surface2 border border-border rounded-lg text-white text-sm outline-none focus:border-primary transition-colors"
             placeholder="Senha"
             type="password"
             value={password}
-            onChange={e => setPassword(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && handle()}
+            onChange={event => setPassword(event.target.value)}
+            onKeyDown={event => event.key === 'Enter' && handle()}
           />
           {error && <p className="text-danger text-xs">{error}</p>}
           <button

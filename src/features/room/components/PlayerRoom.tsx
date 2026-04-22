@@ -8,7 +8,7 @@ interface Props {
   players: Player[];
   answered: boolean;
   streak: number;
-  onAnswer: (idx: number) => void;
+  onAnswer: (optionIndex: number) => void;
   onLeave: () => void;
 }
 
@@ -26,37 +26,41 @@ export default function PlayerRoom({
   onAnswer,
   onLeave,
 }: Props) {
-  const duration = room.questionDuration ?? QUESTION_TIME
+  const duration = room.questionDuration ?? QUESTION_TIME;
   const [timeLeft, setTimeLeft] = useState(duration);
   const [selected, setSelected] = useState<number | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  useEffect(() => { setSelected(null) }, [question?.id]);
+  useEffect(() => {
+    setSelected(null);
+  }, [question?.id]);
 
-  // Timer sincronizado com questionStartedAt do servidor
   useEffect(() => {
     if (room.status !== "question" || answered || !room.questionStartedAt) {
       if (timerRef.current) clearInterval(timerRef.current);
       return;
     }
     const tick = () => {
-      const elapsed = (Date.now() - room.questionStartedAt!) / 1000
-      const left    = Math.max(0, duration - Math.floor(elapsed))
-      setTimeLeft(left)
-      if (left <= 0 && timerRef.current) clearInterval(timerRef.current)
-    }
-    tick()
-    timerRef.current = setInterval(tick, 500)
-    return () => { if (timerRef.current) clearInterval(timerRef.current) }
+      const elapsed = (Date.now() - room.questionStartedAt!) / 1000;
+      const left = Math.max(0, duration - Math.floor(elapsed));
+      setTimeLeft(left);
+      if (left <= 0 && timerRef.current) clearInterval(timerRef.current);
+    };
+    tick();
+    timerRef.current = setInterval(tick, 500);
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
   }, [room.status, room.questionStartedAt, answered, duration]);
 
-  const handleAnswer = (idx: number) => {
+  const handleAnswer = (optionIndex: number) => {
     if (answered || selected !== null) return;
-    setSelected(idx);
-    onAnswer(idx);
+    setSelected(optionIndex);
+    onAnswer(optionIndex);
   };
 
-  const myRank = players.findIndex((p) => p.id === player.id) + 1;
+  const myRank =
+    players.findIndex((currentPlayer) => currentPlayer.id === player.id) + 1;
 
   if (room.status === "waiting") {
     return (
@@ -67,33 +71,37 @@ export default function PlayerRoom({
           <p className="text-muted text-sm">A partida vai começar em breve</p>
         </div>
 
-        {/* Player card */}
         <div className="bg-surface border border-primary/40 rounded-xl px-8 py-4 text-center">
           <p className="text-xs text-muted mb-1">Você entrou como</p>
           <p className="font-bold text-lg text-primary">{player.name}</p>
         </div>
 
-        {/* Players list */}
         {players.length > 0 && (
           <div className="w-full max-w-sm bg-surface border border-border rounded-xl overflow-hidden">
             <div className="px-5 py-3 border-b border-border flex justify-between items-center">
-              <span className="text-xs font-bold text-muted uppercase tracking-wide">Na sala</span>
-              <span className="text-xs font-bold text-primary">{players.length}</span>
+              <span className="text-xs font-bold text-muted uppercase tracking-wide">
+                Na sala
+              </span>
+              <span className="text-xs font-bold text-primary">
+                {players.length}
+              </span>
             </div>
             <div className="max-h-48 overflow-y-auto">
-              {players.map((p) => (
+              {players.map((roomPlayer) => (
                 <div
-                  key={p.id}
+                  key={roomPlayer.id}
                   className={`flex items-center gap-3 px-5 py-2.5 border-b border-border last:border-0
-                    ${p.id === player.id ? 'bg-primary/10' : ''}`}
+                    ${roomPlayer.id === player.id ? "bg-primary/10" : ""}`}
                 >
                   <div className="w-7 h-7 rounded-full bg-surface2 flex items-center justify-center text-xs font-bold">
-                    {p.name.charAt(0).toUpperCase()}
+                    {roomPlayer.name.charAt(0).toUpperCase()}
                   </div>
                   <span className="text-sm font-medium">
-                    {p.name}
-                    {p.id === player.id && (
-                      <span className="text-primary text-xs ml-1.5">(você)</span>
+                    {roomPlayer.name}
+                    {roomPlayer.id === player.id && (
+                      <span className="text-primary text-xs ml-1.5">
+                        (você)
+                      </span>
                     )}
                   </span>
                 </div>
@@ -112,13 +120,13 @@ export default function PlayerRoom({
         : timeLeft > 5
           ? "text-warning"
           : "text-danger";
-    const optionClass = (idx: number) => {
+    const optionClass = (optionIndex: number) => {
       const base =
         "w-full px-5 py-4 rounded-lg text-sm font-medium text-left border-[1.5px] transition-all";
       if (answered || selected !== null) {
-        if (idx === question.resposta)
+        if (optionIndex === question.resposta)
           return `${base} bg-success/10 border-success text-success`;
-        if (idx === selected)
+        if (optionIndex === selected)
           return `${base} bg-danger/10 border-danger text-danger`;
         return `${base} bg-surface2 border-border text-muted opacity-50`;
       }
@@ -176,16 +184,16 @@ export default function PlayerRoom({
           </div>
 
           <div className="flex flex-col gap-2.5">
-            {question.opcoes.map((opt, idx) => (
+            {question.opcoes.map((option, optionIndex) => (
               <button
-                key={idx}
-                className={optionClass(idx)}
-                onClick={() => handleAnswer(idx)}
+                key={optionIndex}
+                className={optionClass(optionIndex)}
+                onClick={() => handleAnswer(optionIndex)}
               >
                 <span className="text-muted mr-2 text-xs">
-                  {String.fromCharCode(65 + idx)}.
+                  {String.fromCharCode(65 + optionIndex)}.
                 </span>
-                {opt}
+                {option}
               </button>
             ))}
           </div>
@@ -211,7 +219,6 @@ export default function PlayerRoom({
     );
   }
 
-  // Ranking screen
   if (room.status === "ranking" || room.status === "finished") {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center px-4 py-8 gap-6 animate-fade-in">
@@ -233,22 +240,30 @@ export default function PlayerRoom({
         </div>
 
         <div className="w-full max-w-sm bg-surface border border-border rounded-xl overflow-hidden">
-          {players.slice(0, 10).map((p, i) => (
+          {players.slice(0, 10).map((roomPlayer, index) => (
             <div
-              key={p.id}
+              key={roomPlayer.id}
               className={`flex items-center gap-3 px-6 py-3 border-b border-border last:border-0
-                ${p.id === player.id ? "bg-primary/10" : i === 0 ? "bg-primary/5" : ""}`}
+                ${roomPlayer.id === player.id ? "bg-primary/10" : index === 0 ? "bg-primary/5" : ""}`}
             >
               <span className="w-6 text-center text-sm font-bold text-muted">
-                {i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : `${i + 1}º`}
+                {index === 0
+                  ? "🥇"
+                  : index === 1
+                    ? "🥈"
+                    : index === 2
+                      ? "🥉"
+                      : `${index + 1}º`}
               </span>
               <span className="flex-1 font-semibold text-sm">
-                {p.name}{" "}
-                {p.id === player.id && (
+                {roomPlayer.name}{" "}
+                {roomPlayer.id === player.id && (
                   <span className="text-primary text-xs">(você)</span>
                 )}
               </span>
-              <span className="text-xs font-bold text-primary">{p.xp} XP</span>
+              <span className="text-xs font-bold text-primary">
+                {roomPlayer.xp} XP
+              </span>
             </div>
           ))}
         </div>

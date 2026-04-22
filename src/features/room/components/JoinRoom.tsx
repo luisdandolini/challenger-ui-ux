@@ -41,7 +41,7 @@ export default function JoinRoom({ onJoin, error, onBack }: Props) {
             placeholder="CÓDIGO"
             value={code}
             maxLength={6}
-            onChange={(e) => setCode(e.target.value.toUpperCase())}
+            onChange={(event) => setCode(event.target.value.toUpperCase())}
           />
           <input
             className="w-full px-4 py-3 bg-surface2 border border-border rounded-lg text-white text-sm
@@ -49,8 +49,8 @@ export default function JoinRoom({ onJoin, error, onBack }: Props) {
             placeholder="Seu nome"
             value={name}
             maxLength={30}
-            onChange={(e) => setName(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && handle()}
+            onChange={(event) => setName(event.target.value)}
+            onKeyDown={(event) => event.key === "Enter" && handle()}
           />
           {error && <p className="text-danger text-xs">{error}</p>}
           <button
