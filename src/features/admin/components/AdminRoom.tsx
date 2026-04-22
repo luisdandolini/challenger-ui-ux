@@ -106,11 +106,19 @@ export default function AdminRoom({
   onNextQuestion,
   onFinish,
 }: Props) {
-  const isLast = room.currentQuestion >= room.totalQuestions - 1;
-  const timeLeft = useTimer(room);
-  const timerPct = (timeLeft / room.questionDuration) * 100;
-  const timerColor =
-    timeLeft > 10 ? "#7c6af7" : timeLeft > 5 ? "#fbbf24" : "#f87171";
+  const isLast       = room.currentQuestion >= room.totalQuestions - 1;
+  const timeLeft     = useTimer(room);
+  const timerPct     = (timeLeft / room.questionDuration) * 100;
+  const timerColor   = timeLeft > 10 ? "#7c6af7" : timeLeft > 5 ? "#fbbf24" : "#f87171";
+  const hasAutoEnded = useRef(false);
+
+  useEffect(() => {
+    if (room.status !== "question") { hasAutoEnded.current = false; return; }
+    if (timeLeft === 0 && !hasAutoEnded.current) {
+      hasAutoEnded.current = true;
+      onShowRanking();
+    }
+  }, [timeLeft, room.status, onShowRanking]);
 
   return (
     <div className="min-h-screen px-4 py-8 max-w-2xl mx-auto flex flex-col gap-5">
