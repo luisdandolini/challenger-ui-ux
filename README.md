@@ -129,35 +129,3 @@ VITE_FIREBASE_STORAGE_BUCKET
 VITE_FIREBASE_MESSAGING_SENDER_ID
 VITE_FIREBASE_APP_ID
 ```
-
-## Regras de segurança do Firestore
-
-Após os 30 dias do modo de teste, atualize as regras em **Firestore → Regras**:
-
-```
-rules_version = '2';
-service cloud.firestore {
-  match /databases/{database}/documents {
-
-    match /rooms/{roomId} {
-      allow read: if true;
-      allow create: if request.auth != null;
-      allow update: if request.auth != null && request.auth.uid == resource.data.adminId;
-
-      match /questions/{q} {
-        allow read: if true;
-        allow write: if request.auth != null;
-      }
-      match /players/{p} {
-        allow read: if true;
-        allow create: if true;
-        allow update: if true;
-      }
-      match /answers/{a} {
-        allow read: if request.auth != null;
-        allow create: if true;
-      }
-    }
-  }
-}
-```
